@@ -1,11 +1,9 @@
 """
 main.py - Demonstration of btree_lib (B-Tree and B+ Tree).
 
-Part 1: Correctness tests on small trees whose results can be checked by hand
-        (the B-Tree tests reproduce CLRS Figures 18.7 and 18.8).
+Part 1: Correctness tests on small trees whose results can be checked by hand.
 Part 2: Runtime measurements for different (large) input sizes.
 Part 3: Plots of the measurements (saved to runtime_plots.png).
-Part 4: Conclusions, observations and applications.
 
 Run:  python main.py        (needs matplotlib:  pip install matplotlib)
 """
@@ -44,7 +42,7 @@ def L(*groups):
 
 
 def make_node(keys, children=None):
-    """Build a B-Tree node by hand (only used to recreate the CLRS figure)."""
+    """Build a B-Tree node by hand (used to set up a known starting tree)."""
     node = BTreeNode(leaf=(children is None))
     node.keys = list(keys)
     node.children = children if children is not None else []
@@ -82,68 +80,67 @@ def test_btree():
     tree.insert(5)
     check("inserting duplicate 5 changes nothing", tree.inorder(), list(range(1, 11)))
 
-    # ---------------- Test 2: CLRS Figure 18.7 (insertion), t = 3 ----------------
-    print("\nTest 2: CLRS Figure 18.7 - insertions with t = 3")
+    # ---------------- Test 2: insertions that cause splits, t = 3 ----------------
+    print("\nTest 2: insertions with t = 3 (letters as keys)")
     tree = BTree(t=3)
     tree.root = make_node("GMPX", [make_node("ACDE"), make_node("JK"), make_node("NO"),
                                    make_node("RSTUV"), make_node("YZ")])
-    print("  (a) initial tree:")
+    print("  Starting tree:")
     tree.print_tree()
 
     tree.insert("B")
-    print("  (b) B inserted  (goes into a leaf that is not full):")
+    print("  Insert B  (goes into a leaf that is not full):")
     tree.print_tree()
     check("insert B", tree.levels(),
           [L("GMPX"), L("ABCDE", "JK", "NO", "RSTUV", "YZ")])
 
     tree.insert("Q")
-    print("  (c) Q inserted  (leaf RSTUV is full -> split, T moves up):")
+    print("  Insert Q  (leaf RSTUV is full -> split, T moves up):")
     tree.print_tree()
     check("insert Q", tree.levels(),
           [L("GMPTX"), L("ABCDE", "JK", "NO", "QRS", "UV", "YZ")])
 
     tree.insert("L")
-    print("  (d) L inserted  (root GMPTX is full -> split, tree grows taller):")
+    print("  Insert L  (root GMPTX is full -> split, tree grows taller):")
     tree.print_tree()
     check("insert L", tree.levels(),
           [L("P"), L("GM", "TX"), L("ABCDE", "JKL", "NO", "QRS", "UV", "YZ")])
 
     tree.insert("F")
-    print("  (e) F inserted  (leaf ABCDE is full -> split, C moves up):")
+    print("  Insert F  (leaf ABCDE is full -> split, C moves up):")
     tree.print_tree()
     check("insert F", tree.levels(),
           [L("P"), L("CGM", "TX"), L("AB", "DEF", "JKL", "NO", "QRS", "UV", "YZ")])
 
-    # ---------------- Test 3: CLRS Figure 18.8 (deletion), t = 3 ----------------
-    # The tree we just built is exactly CLRS Figure 18.8(a).
-    print("\nTest 3: CLRS Figure 18.8 - deletions with t = 3 (continuing from Test 2)")
+    # ---------------- Test 3: deletions covering every delete case, t = 3 ----------------
+    print("\nTest 3: deletions with t = 3 (continuing from Test 2)")
 
     tree.delete("F")
-    print("  (b) F deleted  - case 1 (key in a leaf):")
+    print("  Delete F  - case 1 (key in a leaf):")
     tree.print_tree()
     check("delete F (case 1)", tree.levels(),
           [L("P"), L("CGM", "TX"), L("AB", "DE", "JKL", "NO", "QRS", "UV", "YZ")])
 
     tree.delete("M")
-    print("  (c) M deleted  - case 2a (replace M by predecessor L):")
+    print("  Delete M  - case 2a (replace M by predecessor L):")
     tree.print_tree()
     check("delete M (case 2a)", tree.levels(),
           [L("P"), L("CGL", "TX"), L("AB", "DE", "JK", "NO", "QRS", "UV", "YZ")])
 
     tree.delete("G")
-    print("  (d) G deleted  - case 2c (merge DE + G + JK, then delete G):")
+    print("  Delete G  - case 2c (merge DE + G + JK, then delete G):")
     tree.print_tree()
     check("delete G (case 2c)", tree.levels(),
           [L("P"), L("CL", "TX"), L("AB", "DEJK", "NO", "QRS", "UV", "YZ")])
 
     tree.delete("D")
-    print("  (e) D deleted  - case 3b (merge CL + P + TX, root shrinks, height drops):")
+    print("  Delete D  - case 3b (merge CL + P + TX, root shrinks, height drops):")
     tree.print_tree()
     check("delete D (case 3b)", tree.levels(),
           [L("CLPTX"), L("AB", "EJK", "NO", "QRS", "UV", "YZ")])
 
     tree.delete("B")
-    print("  (f) B deleted  - case 3a (borrow: C moves down, E moves up):")
+    print("  Delete B  - case 3a (borrow: C moves down, E moves up):")
     tree.print_tree()
     check("delete B (case 3a)", tree.levels(),
           [L("ELPTX"), L("AC", "JK", "NO", "QRS", "UV", "YZ")])
@@ -449,54 +446,6 @@ def make_plots(btree_results, bplus_results, degrees, degree_results):
 
 
 # =============================================================================
-#                     PART 4: Conclusions and applications
-# =============================================================================
-
-def print_conclusions(btree_results, bplus_results):
-    heading("PART 4: CONCLUSIONS, OBSERVATIONS AND APPLICATIONS")
-    growth = SIZES[-1] // SIZES[0]
-    b_search = btree_results[-1]["search"] / btree_results[0]["search"]
-    p_search = bplus_results[-1]["search"] / bplus_results[0]["search"]
-    print(f"""
-Observations (from the measurements above)
-  * n grew {growth}x (from {SIZES[0]} to {SIZES[-1]} keys), but the search time grew only
-    {b_search:.1f}x for the B-Tree and {p_search:.1f}x for the B+ Tree. The height went from
-    {btree_results[0]['height']} to {btree_results[-1]['height']} (B-Tree) and from \
-{bplus_results[0]['height']} to {bplus_results[-1]['height']} (B+ Tree).
-    This matches the theory: search / insert / delete are O(t log_t n), and the
-    height is at most log_t((n+1)/2), so the cost grows only logarithmically.
-  * The times rise a bit faster between 50000 and 100000 keys. The height barely
-    changes there; the reason is the CPU cache: a large tree no longer fits in the
-    fast cache memory, so following a child pointer often has to wait for slower RAM.
-  * The range query only depends on the height (to find the first leaf) plus the
-    number of keys returned, because the B+ Tree walks the linked list of leaves.
-    A plain B-Tree would have to go up and down the tree to do the same thing.
-  * Bigger nodes -> smaller height. In Python, looking inside a node is a linear scan,
-    so very large nodes eventually stop helping. On a disk, one node = one disk
-    block, and reading a block is so slow that the height (number of disk reads) is
-    what matters most - that is why real systems use nodes with hundreds of keys.
-  * B-Tree vs B+ Tree: a B-Tree search can stop early at an internal node; a B+ Tree
-    search always goes to a leaf, but its internal nodes hold only keys, so more of
-    them fit in a block, and all data is together in the leaves.
-  * Inserting keys in increasing order leaves B+ Tree leaves only half full
-    (see B+ Tree Test 1), because every split leaves the left half behind.
-
-Conclusions
-  * Both trees stay perfectly balanced (all leaves at the same depth) after every
-    insert and delete, so the worst case is always O(log n).
-  * The B-Tree is the simpler "balanced search tree for blocks of data"; the B+ Tree
-    adds a linked leaf level, which makes ordered scans and range queries fast.
-
-Applications
-  * Database indexes: MySQL InnoDB, PostgreSQL, SQLite and Oracle use B+ Trees
-    for their indexes (fast lookups AND fast "WHERE x BETWEEN a AND b").
-  * File systems: NTFS, ext4 (directory index), HFS+, Btrfs and XFS use B-Trees /
-    B+ Trees to find files and disk blocks.
-  * Key-value stores and search engines that must keep data sorted on disk.
-""")
-
-
-# =============================================================================
 
 def main():
     random.seed(42)          # fixed seed so every run gives the same random tests
@@ -506,7 +455,6 @@ def main():
 
     btree_results, bplus_results, degrees, degree_results = run_benchmarks()
     make_plots(btree_results, bplus_results, degrees, degree_results)
-    print_conclusions(btree_results, bplus_results)
 
 
 if __name__ == "__main__":

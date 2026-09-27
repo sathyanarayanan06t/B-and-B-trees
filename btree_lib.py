@@ -25,6 +25,33 @@ Keys can be anything that can be compared with < and == (ints, strings, ...).
 
 
 # =============================================================================
+#                 Printing helpers (shared by both trees)
+# =============================================================================
+
+def node_text(node):
+    """A node's keys as text, e.g. [3 5 7]"""
+    return "[" + " ".join(str(k) for k in node.keys) + "]"
+
+
+def print_children(node, indent):
+    """
+    Print every child of `node` on its own line, then (recursively) its children.
+      * "|-- " is drawn in front of a child that has more siblings below it,
+      * "`-- " is drawn in front of the last child.
+    `indent` is the text drawn in front of this level: under a child that has
+    more siblings we continue the line with "|   ", otherwise just spaces.
+    """
+    for i, child in enumerate(node.children):
+        is_last = (i == len(node.children) - 1)
+        if is_last:
+            print(indent + "`-- " + node_text(child))
+            print_children(child, indent + "    ")
+        else:
+            print(indent + "|-- " + node_text(child))
+            print_children(child, indent + "|   ")
+
+
+# =============================================================================
 #                                   B-TREE
 # =============================================================================
 
@@ -282,10 +309,18 @@ class BTree:
         return result
 
     def print_tree(self):
-        """Print the tree one level per line, e.g.  Level 1: [5 10] [30 40]"""
-        for depth, level in enumerate(self.levels()):
-            nodes = " ".join("[" + " ".join(str(k) for k in keys) + "]" for keys in level)
-            print(f"    Level {depth}: {nodes}")
+        """
+        Print the tree sideways, one node per line, e.g.
+            [4]
+            |-- [2]
+            |   |-- [1]
+            |   `-- [3]
+            `-- [6 8]
+                |-- [5]
+                ...
+        """
+        print(node_text(self.root))
+        print_children(self.root, "")
 
     def height(self):
         """Number of edges from the root to a leaf (a single node has height 0)."""
@@ -552,13 +587,9 @@ class BPlusTree:
         return result
 
     def print_tree(self):
-        """Print the tree one level per line. Leaves are joined with '->' (the leaf chain)."""
-        all_levels = self.levels()
-        for depth, level in enumerate(all_levels):
-            is_leaf_level = (depth == len(all_levels) - 1)
-            joiner = " -> " if is_leaf_level else " "
-            nodes = joiner.join("[" + " ".join(str(k) for k in keys) + "]" for keys in level)
-            print(f"    Level {depth}: {nodes}")
+        """Print the tree sideways, one node per line (same format as BTree.print_tree)."""
+        print(node_text(self.root))
+        print_children(self.root, "")
 
     def height(self):
         """Number of edges from the root to a leaf (a single node has height 0)."""
